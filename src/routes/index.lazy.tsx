@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../lib/axios'
 import { MenuTable } from '../components/menu/MenuTable'
 import { ProductModal } from '../components/menu/ProductModal'
 import { Cart } from '../components/cart/Cart';
 
 import type { Product, CartItem } from '../types';
+
+import { MyOrders } from '../components/orders/MyOrders';
 
 export function Index() {
   const [sessionId, setSessionId] = useState<string | null>(
@@ -16,9 +18,12 @@ export function Index() {
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [cart, setCart] = useState<CartItem[]>([])
+  const effectRan = useRef(false);
 
   useEffect(() => {
-    let ignore = true;
+    if (effectRan.current === true && process.env.NODE_ENV === 'development') {
+      return;
+    }
 
     const searchParams = new URLSearchParams(window.location.search)
     const currentTableId = searchParams.get('table')
@@ -37,38 +42,31 @@ export function Index() {
         try {
           const { data: existingSession } = await api.get(`/sessions/${storedSessionId}`);
           if (existingSession.tableId === currentTableId && existingSession.status === 'ACTIVE') {
-            if (!ignore) setSessionId(existingSession.id);
+            setSessionId(existingSession.id);
             return; // Sessão válida, encerra o fluxo.
           }
         } catch (err: unknown) {
-          console.error(err);
+          console.warn("Falha ao validar sessão existente, uma nova será criada/buscada.", err);
         }
       }
 
       // 2. Se não há sessão válida, busca uma ativa ou cria uma nova.
       try {
         const { data: activeSession } = await api.get(`/sessions/table/${currentTableId}/active`);
-        if (!ignore) {
-          console.log("estrou no ignore porque esta falso")
-          localStorage.setItem('sessionId', activeSession.id);
-          setSessionId(activeSession.id);
-        }
+        localStorage.setItem('sessionId', activeSession.id);
+        setSessionId(activeSession.id);
       } catch (err: any) {
         if (err.response && err.response.status === 404) {
           // Nenhuma sessão ativa encontrada, cria uma nova.
           try {
             const { data: newSession } = await api.post('/sessions', { tableId: currentTableId });
-            if (!ignore) {
-              localStorage.setItem('sessionId', newSession.id);
-              setSessionId(newSession.id);
-            }
+            localStorage.setItem('sessionId', newSession.id);
+            setSessionId(newSession.id);
           } catch (creationError) {
-            if (!ignore) {
-              console.error('Erro ao criar a nova sessão:', creationError);
-              setError('Falha crítica ao tentar criar uma nova sessão.');
-            }
+            console.error('Erro ao criar a nova sessão:', creationError);
+            setError('Falha crítica ao tentar criar uma nova sessão.');
           }
-        } else if (!ignore) {
+        } else {
           console.error('Erro ao buscar ou criar sessão:', err);
           setError('Não foi possível iniciar uma sessão. Verifique a conexão e se a mesa está disponível.');
         }
@@ -77,9 +75,8 @@ export function Index() {
 
     initializeSession();
 
-    // 3. Função de limpeza para ignorar o resultado da primeira execução em StrictMode
     return () => {
-      ignore = false;
+      effectRan.current = true;
     };
   }, [])
 
@@ -131,7 +128,7 @@ export function Index() {
 
   return (
     <div className="p-4 md:p-8 font-sans bg-gray-900 text-white min-h-screen">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto pb-32 md:pb-16">
         <header className="text-center mb-8">
             <h1 className="text-4xl font-bold text-amber-400">Cardápio RockBandPay</h1>
             <p className="text-gray-400">Mesa: {tableId}</p>
@@ -140,6 +137,8 @@ export function Index() {
         <main>
             <MenuTable onProductSelect={handleProductSelect} />
         </main>
+
+        {sessionId && <MyOrders sessionId={sessionId} />}
 
         <ProductModal 
             isOpen={!!selectedProduct}
@@ -158,39 +157,3 @@ export function Index() {
   )
 }
 
-
-
-
-
-
-
-
-// Certo, obrigado por refazer o teste e me mandar os logs detalhados do backend e do frontend.
-
-//   Sua análise está correta. Vamos juntar as peças:
-
-//    1. Log do Backend: Mostra o erro P2002 - Unique constraint failed. Isso nos diz com 100% de
-//       certeza:
-//        * A restrição que colocamos no banco de dados está funcionando perfeitamente.
-//        * Uma segunda requisição POST /sessions para a mesma mesa está, de fato, chegando ao
-//          backend.
-
-//    2. Log do Frontend: Mostra o AxiosError: Request failed with status code 400. Isso é o frontend
-//       recebendo a resposta de erro que o backend envia quando a segunda requisição falha no banco.
-//       A mensagem de "falha crítica" aparece na tela porque é o que o código faz dentro do bloco
-//       catch.
-
-//   Isso nos traz de volta à estaca zero: Por que a segunda requisição ainda está sendo feita, mesmo 
-//   depois da nossa correção no `useEffect`?
-
-//   A correção com a função de limpeza e a flag ignore foi projetada especificamente para impedir
-//   essa segunda chamada. O fato de o erro ainda estar acontecendo me leva a uma forte suspeita:
-
-//   É muito provável que, ao refazer o processo de teste, o arquivo index.lazy.tsx tenha sido
-//   revertido para a versão anterior, sem a correção da função de limpeza. O comportamento que
-//   você está vendo é exatamente o que aconteceria se a correção não estivesse lá.
-
-//   Para que possamos ter certeza absoluta e resolver isso de vez, você me permite ler o conteúdo
-//   do arquivo customer-frontend/src/routes/index.lazy.tsx mais uma vez?
-
-//   Isso vai nos confirmar se a correção está no lugar ou se precisamos reaplicá-la.

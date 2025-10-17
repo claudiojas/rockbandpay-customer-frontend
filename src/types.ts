@@ -15,3 +15,20 @@ export interface Product {
 export interface CartItem extends Product {
   quantity: number;
 }
+
+// Tipos para Pedidos
+
+export interface IOrderItem {
+  id: string;
+  quantity: number;
+  totalPrice: number;
+  product: Product;
+}
+
+export interface IOrder {
+  id: string;
+  status: 'PENDING' | 'PREPARING' | 'READY' | 'DELIVERED' | 'CANCELLED';
+  totalAmount: number;
+  createdAt: string;
+  orderItems: IOrderItem[];
+}
