@@ -1,17 +1,11 @@
 import { Button } from '../ui/button';
 import { api } from '../../lib/axios';
-
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-}
+import type { CartItem, IOrder } from '../../types';
 
 interface CartProps {
   items: CartItem[];
   sessionId: string;
-  onOrderPlaced: () => void; // Função para limpar o carrinho após o pedido
+  onOrderPlaced: (newOrder: IOrder) => void; // Modificado para aceitar o novo pedido
 }
 
 export function Cart({ items, sessionId, onOrderPlaced }: CartProps) {
@@ -20,12 +14,12 @@ export function Cart({ items, sessionId, onOrderPlaced }: CartProps) {
   const handlePlaceOrder = async () => {
     try {
       const orderItems = items.map(item => ({ productId: item.id, quantity: item.quantity }));
-      await api.post('/orders', {
+      const response = await api.post('/orders', {
         sessionId,
         items: orderItems,
       });
       alert('Pedido enviado para a cozinha!');
-      onOrderPlaced();
+      onOrderPlaced(response.data);
     } catch (error) {
       console.error('Erro ao fazer pedido:', error);
       alert('Não foi possível fazer o pedido. Tente novamente.');

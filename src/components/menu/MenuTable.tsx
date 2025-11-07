@@ -65,21 +65,32 @@ export function MenuTable({ onProductSelect }: MenuTableProps) {
               <TableBody>
                 {products
                   .filter((p) => p.category.id === category.id)
-                  .map((product) => (
-                    <TableRow
-                      key={product.id}
-                      onClick={() => onProductSelect(product)}
-                      className="cursor-pointer hover:bg-gray-800/50 border-gray-700"
-                    >
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell className="text-right">
-                        {product.price.toLocaleString('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        })}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  .map((product) => {
+                    const isSoldOut = product.stock <= 0;
+                    return (
+                      <TableRow
+                        key={product.id}
+                        onClick={() => !isSoldOut && onProductSelect(product)}
+                        className={`border-gray-700 ${
+                          isSoldOut
+                            ? 'opacity-50 cursor-not-allowed'
+                            : 'cursor-pointer hover:bg-gray-800/50'
+                        }`}
+                      >
+                        <TableCell className="font-medium">{product.name}</TableCell>
+                        <TableCell className="text-right">
+                          {isSoldOut ? (
+                            <span className="text-red-500 font-semibold">Esgotado</span>
+                          ) : (
+                            product.price.toLocaleString('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            })
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
               </TableBody>
             </Table>
           </div>

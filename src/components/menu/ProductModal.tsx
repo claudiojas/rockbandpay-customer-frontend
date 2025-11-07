@@ -25,7 +25,10 @@ export function ProductModal({ product, isOpen, onClose, onAddToCart }: ProductM
     return null;
   }
 
+  const isSoldOut = product.stock <= 0;
+
   const handleAddToCart = () => {
+    if (isSoldOut) return;
     onAddToCart(product, quantity);
     onClose(); // Fecha o modal após adicionar
     setQuantity(1); // Reseta a quantidade
@@ -36,11 +39,9 @@ export function ProductModal({ product, isOpen, onClose, onAddToCart }: ProductM
       <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700 text-white">
         <DialogHeader>
           <DialogTitle className="text-amber-400 text-2xl">{product.name}</DialogTitle>
-          {product.description && (
-            <DialogDescription className="text-gray-400">
-              {product.description}
-            </DialogDescription>
-          )}
+          <DialogDescription className="text-gray-400">
+            {product.description || <>&nbsp;</>}
+          </DialogDescription>
         </DialogHeader>
         
         <div className="my-4">
@@ -52,19 +53,23 @@ export function ProductModal({ product, isOpen, onClose, onAddToCart }: ProductM
         </div>
 
         <div className="flex items-center justify-between">
-          <p className="text-xl font-bold">
-            {product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-          </p>
+          {isSoldOut ? (
+            <p className="text-xl font-bold text-red-500">Produto Esgotado</p>
+          ) : (
+            <p className="text-xl font-bold">
+              {product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </p>
+          )}
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</Button>
-            <span className="w-10 text-center font-bold">{quantity}</span>
-            <Button variant="outline" size="icon" onClick={() => setQuantity(quantity + 1)}>+</Button>
+            <Button variant="outline" size="icon" onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={isSoldOut}>-</Button>
+            <span className="w-10 text-center font-bold">{isSoldOut ? 0 : quantity}</span>
+            <Button variant="outline" size="icon" onClick={() => setQuantity(prev => Math.min(prev + 1, product.stock))} disabled={isSoldOut || quantity >= product.stock}>+</Button>
           </div>
         </div>
 
         <DialogFooter>
-          <Button onClick={handleAddToCart} className="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold">
-            Adicionar ao Pedido
+          <Button onClick={handleAddToCart} className="w-full bg-amber-500 hover:bg-amber-600 text-black font-bold" disabled={isSoldOut}>
+            {isSoldOut ? 'Esgotado' : 'Adicionar ao Pedido'}
           </Button>
         </DialogFooter>
       </DialogContent>
